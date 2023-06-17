@@ -1,0 +1,34 @@
+Dynamic Mesh Generator
+- Calculate and Store mesh whenver object is rotated
+
+
+Static Mesh with Transform Data 
+- Only calculates mesh data, then applies transform data such as position and rotation whenver simulating ray tracing
+
+
+
+Have to decide angle axis and layout
+
+Camera Faces Negative Z
+Right Hand Rule
++X is Right
++Y is Up
+-Z is Forward
+
+Need to implement a clip matrix
+
+Need to implement a projection matrix
+
+
+
+Ray tracing
+create line
+loop through all objects
+find closest intersection
+then calculate 
+
+
+create primary ray
+find closest intersection
+draw secondary light ray to light sources
+draw reflection rays
