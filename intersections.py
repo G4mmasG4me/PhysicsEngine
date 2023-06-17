@@ -12,14 +12,10 @@ def point_in_plane_polygon(point, polygon):
   # remove the z coordinte, making them 2d
   points = [Point_2D(point.x, point.y) for point in points]
 
-  for point in points:
-    print(point.x, point.y)
-
   # seperate the polygon points and testing point
   polygon_points = points[:-1]
   point = points[-1]
   ray = Ray_2D(point, Vector_2D(1,0))
-  print(f'Ray [{ray.p1.x}, {ray.p1.y}], [{ray.dir.x}, {ray.dir.y}]')
 
   count = 0
   n = len(polygon_points)
@@ -27,13 +23,11 @@ def point_in_plane_polygon(point, polygon):
   for i in range(len(polygon_points)):
     v1 = polygon_points[i]
     v2 = polygon_points[(i + 1) % n]
-    print(f'Segment [{v1.x}, {v1.y}], [{v2.x}, {v2.y}]')
 
     intersection = ray_segment_intersect_2d(ray, Segment_2D(v1, v2))
     if intersection:
       if ((v1.y > point.y) != (v2.y > point.y)):
         count += 1
-  print(count)
   return count % 2 == 1
 
 def ray_sphere_intersection(ray, sphere):
@@ -128,8 +122,6 @@ def ray_segment_intersect_2d(ray, segment):
   
   if intersection_output:
     intercept, t1, t2 = intersection_output
-    print(intercept.x, intercept.y)
-    print(t1, t2)
     if t1 >= 0 and 0 <= t2 <= 1:
       return intercept
   return None
