@@ -32,3 +32,23 @@ create primary ray
 find closest intersection
 draw secondary light ray to light sources
 draw reflection rays
+
+
+
+
+
+---- all intersection equations are done using zerod object
+
+
+
+
+
+
+
+
+
+----- Current Errors -----
+Current method for refraction
+-if the previous intersection is a  with the same object, refraction then the next refraction must be refraction with air
+- if the previous intersection is with a different objec, then the refraction is with an object
+- doesn't handle cases where shapes may be inside of each other, or cases where it refracts from one object to another

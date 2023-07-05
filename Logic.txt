@@ -1,0 +1,15 @@
+Ray Tracing Method
+
+get focus position
+get pixel position
+shoot ray from focus to pixel 
+loop through objects
+  calculate intersection point 
+
+get closest inersection point
+
+loop through light sources
+  create segment between closest intersection point and light point
+  loop through objects
+    calculate intersection point
+    
