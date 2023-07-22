@@ -139,8 +139,10 @@ class Point_3D:
   def __mod__(self, other):
     return Point_3D(self.x % other, self.y % other, self.z % other)
   
+  def __repr__(self):
+    return f'({round(self.x,2)}, {round(self.y,2)}, {round(self.z,2)})'
   def __str__(self):
-    return f'({self.x}, {self.y}, {self.z})'
+    return f'({round(self.x,2)}, {round(self.y,2)}, {round(self.z,2)})'
     
   def dot(self, other):
     return self.x * other.x + self.y * other.y + self.z * other.z
@@ -156,6 +158,8 @@ class Point_3D:
   
   def output(self):
     print(f'Point 3D : ({self.x}, {self.y}, {self.z})')
+
+  
 
 
 
