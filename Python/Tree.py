@@ -17,7 +17,14 @@ class TreeNode:
     mapper = lambda draw: connectionStr if draw else emptyStr
     markers = "".join(map(mapper, levelMarkers[:-1]))
     markers += markerStr if level > 0 else ""
-    print(f"{markers}{self.value[pos]}")
+    
+    if isinstance(pos, (tuple, list)):
+      out = ''
+      for val in pos:
+        out += f'{str(val)}: {str(self.value[val]) if val in self.value else self.value["type"]} | '
+    else:
+      out = f'{str(val)}: {str(self.value[pos]) if pos in self.value else self.value["type"]}'
+    print(f"{markers}{out}")
     for i, child in enumerate(self.children):
         isLast = i == len(self.children) - 1
         child.output(pos, markerStr, [*levelMarkers, not isLast])
