@@ -1,11 +1,5 @@
 from functions import clamp
 
-BLACK = (0,0,0)
-WHITE = (255,255,255)
-RED = (255,0,0)
-GREEN = (0,255,0)
-BLUE = (0,0,255)
-
 # opportunity to add mode to img
 class Colour:
   def __init__(self, colour, type='rgb'):
@@ -16,6 +10,9 @@ class Colour:
 
   def to_list(self):
     return [self.r,self.g,self.b]
+  
+  def to_tuple(self):
+    return (self.r,self.g,self.b)
   
   def fp_to_list(self):
     return [self.r/255,self.g/255,self.b/255]
@@ -66,3 +63,21 @@ class Colour:
       return Colour((r,g,b))
     else:
       return None
+    
+  def __repr__(self):
+    return f'(self.r, self.g, self.b)'
+  def __str__(self):
+    return f'({self.r}, {self.g}, {self.b})'
+    
+BLACK = Colour((0,0,0))
+WHITE = Colour((255,255,255))
+RED = Colour((255,0,0))
+GREEN = Colour((0,255,0))
+BLUE = Colour((0,0,255))
+
+
+
+if __name__ == '__main__':
+  colour1 = Colour((200,200,200))
+  colour2 = Colour((255,255,255))
+  print((colour1 * 0.8 * colour2 * 0.25).to_list())
