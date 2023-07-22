@@ -37,15 +37,13 @@ class Object:
         if distance > epsilon:
           world_intersection_point = self.world_space(intersection_point)
           world_intersection_normal = self.world_space(intersection_normal).normalise()
-          
           # gets colour
           if isinstance(self.texture, Colour):
             colour = self.texture
           elif isinstance(self.texture, Texture):
-            
             uv = self.geometry.get_uv_pos(intersection_point, self.texture.img_size, self.texture.texture_scale)
-            
             colour = self.texture.get_colour(uv)
+
           elif isinstance(self.texture, None): # returns default
             uv = self.geometry.get_uv_pos(intersection_point, default_texture.img_size, default_texture.texture_scale)
            
