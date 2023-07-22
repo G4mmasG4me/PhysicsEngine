@@ -20,7 +20,7 @@ def refracted_ray_dir(incidence_ray, surface_normal, refractive_index_1, refract
 
   ratio = refractive_index_1 / refractive_index_2
   D = 1 - (ratio**2) * (1 - (dot_prod**2))
-  if D > 0: # if refraction, if lower than 1 there is no pass through
+  if D >= 0: # if refraction, if lower than 0 there is no pass through
 
     refracted_direction = (ratio * incidence_direction) - (surface_normal * (ratio * dot_prod + sqrt(D)))
     return refracted_direction.to_vector()
@@ -116,13 +116,11 @@ def ray_inside_outside_detection(ray, object):
 
   
 if __name__ == '__main__':
-  ray = Ray_3D(Point_3D(5,5,5), Vector_3D(-1,0,-1))
-  plane = Vector_3D(0,0,-1)
+  ray = Ray_3D(Point_3D(0,0,0), Point_3D(2.56,15.75,-45.77))
+  plane = Vector_3D(2.56,0.75,4.23)
   # reflect = reflect_point(point1, point2, plane)
-  refracted_ray = refracted_ray_dir(ray, plane, 1, 1.2)
-  reflected_ray = reflected_ray_dir(ray, plane)
+  refracted_ray = refracted_ray_dir(ray, plane, 1, 1)
   refracted_ray.output()
-  reflected_ray.output()
 
 
 
