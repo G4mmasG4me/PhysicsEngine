@@ -71,6 +71,10 @@ class Ray_3D:
     elif isinstance(pd, Vector_3D): # if second value is a direction
       self.dir = pd
       self.p2 = point1 + pd
+    else:
+      print(pd)
+      raise ValueError('Invalid Input')
+      
     
   def along_line(self, t):
     if t >= 0:
