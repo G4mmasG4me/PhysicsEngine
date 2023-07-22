@@ -5,6 +5,7 @@ def uv_unwrap(object):
   node = TreeNode(object.face[0])
   # start at face
   while True:
+    pass
     # create a list of connecting face that haven't been selected before
     # if connecting faces:
       # select a random face
