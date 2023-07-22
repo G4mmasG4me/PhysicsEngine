@@ -21,3 +21,6 @@ class Texture:
   
 
 default_texture = Texture('textures/default.png', 1)
+chessboard_1 = Texture('textures/chessboard_1.png')
+chessboard_2 = Texture('textures/chessboard_2.png')
+chessboard_3 = Texture('textures/chessboard_3.png')
