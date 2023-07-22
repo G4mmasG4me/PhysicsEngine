@@ -29,4 +29,8 @@ class Material:
     self.emission = emission # glow
     self.transparency = transparency
 
-default_material = Material(0.5, 1, 0, 0)
+default_material = Material(0.5, 0, 0, 0)
+glass = Material(0.9,0,0,0.9)
+mirror = Material(0.9,0,0,0)
+normal = Material(0.5,0,0,0)
+rough = Material(0.1,0,0,0)
