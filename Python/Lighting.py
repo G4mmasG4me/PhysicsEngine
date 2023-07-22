@@ -12,6 +12,12 @@ class Phong:
     I_diffuse = k_diffuse * dot(N,L) * I_light * k_light * (1 - reflectiveness)
 
 
-
+# N = surface normal
+# L = vector towards light
+# V = vector towards viewer
+# R = 2 * NL_dot * N - L
+# NL_dot = 
 # for reflective material, there light comes solely from specular
 # for non reflectiv material there light comes from diffuse
+
+# k_ambient, k_specular, k_diffuse = object colour
