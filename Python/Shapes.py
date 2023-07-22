@@ -1,5 +1,5 @@
-from intersections import line_quad_intersection, line_plane_intersect, line_line_intersect_2d, point_in_plane_polygon
-from object_intersections import line_sphere_intersection
+from intersections import line_quad_intersection, line_plane_intersect, line_line_intersect_2d, point_in_plane_polygon, line_polygon_intersection
+from object_intersections import line_sphere_intersection, line_cylinder_intersection
 from Points import Point_2D, Point_3D, Vector_2D, Vector_3D
 from Lines import Segment_2D, Segment_3D, Ray_2D, Ray_3D, Line_2D, Line_3D
 from Planes import Plane, Plane_Polygon
@@ -35,6 +35,28 @@ class Sphere:
 
   def tesselation(sides):
     pass
+
+class Cylinder:
+  def __init__(self, half_height, radius):
+    self.half_height = half_height
+    self.radius = radius
+
+  def intersection(self, line):
+    if isinstance(line, (Line_3D, Ray_3D, Segment_3D)):
+      intersections = line_cylinder_intersection(line, self) # intersection point, intersection t
+
+      intersections_normals = []
+      # calculate the normal
+      for intersection, _ in intersections:
+        if intersection.y == self.half_height: # hits top
+          normal = Vector_3D(0,1,0)
+        elif intersection.y == -self.half_height: # hits bottom
+          normal = Vector_3D(0,-1,0)
+        else: # hits side
+          normal = Vector_3D(intersection.x, 0, intersection.z)
+        intersections_normals.append([intersection, normal])
+      return intersections_normals
+    return None
 
 
 class Cuboid:
@@ -143,25 +165,20 @@ class Quad_Plane_Geometry:
     self.points = [
       Point_3D(-size[0], -size[1], 0),
       Point_3D(-size[0], size[1], 0),
-      Point_3D(size[0], -size[1],0),
-      Point_3D(size[0],size[1],0)
+      Point_3D(size[0],size[1],0),
+      Point_3D(size[0],-size[1],0)
     ]
+    self.plane_polygon = Plane_Polygon(self.points)
 
-  def intersection(self, line, ignore_base_point=True):
+  def intersection(self, line):
     if isinstance(line, (Line_3D, Ray_3D, Segment_3D)):
-      intersection = line_plane_intersect(line, Plane(0,0,1,0))
-      if intersections:
-        # filter the output
-        if ignore_base_point: # use this for shadows
-          intersections = [intersection for intersection in intersections if abs(intersection[1]) > epsilon]
-        
-        if intersections:
-          # get lowest intersection
-          intersection = min(intersections, key=lambda x: abs(x[1]))
-
-          intersection_point, intersection_t = intersection
-          intersection_n = intersection_point.to_vector()
-          return [intersection_point, intersection_n] # intersection point, intersection t, normal | in a sphere the intersection point is the normal when the sphere is located at (0,0,0)
+      intersections = []
+      intersection_output = line_polygon_intersection(line, self.plane_polygon)
+      
+      if intersection_output:
+        normal = self.plane_polygon.plane.normal
+        intersections.append([intersection_output[0], normal])
+      return intersections
     return None
 
 class Quad:
@@ -169,20 +186,26 @@ class Quad:
     self.points = [p1,p2,p3,p4] # tl, tr, br, bl
     self.plane_polygon = Plane_Polygon(self.points)
 
+  def intersection(self, line):
+    if isinstance(line, (Line_3D, Ray_3D, Segment_3D)):
+      intersections = []
+      intersection_output = line_quad_intersection(line, self)
+      
+      if intersection_output:
+        normal = self.plane_polygon.plane.normal
+        intersections.append([intersection_output[0], normal])
+      return intersections
+    return None
+
+
 class Triangle:
   def __init__(self, p1, p2, p3):
     self.points = [p1,p2,p3]
 
 
 if __name__ == '__main__':
-  my_cube = Cuboid([10,10,10])
-  vertices = my_cube.vertices
-  plane_polygon = Plane_Polygon([vertices[0], vertices[1], vertices[2], vertices[3]])
-  plane = plane_polygon.plane
-  my_line = Line_3D(Point_3D(-50,0,0), Vector_3D(1,0,0))
-  point, t = line_plane_intersect(my_line, plane)
-
-  ray = Ray_2D(Point_2D(0,0), Vector_2D(1,0))
-  segment = Segment_2D(Point_2D(10,10), Point_2D(10,-10))
-  intersect = line_line_intersect_2d(ray, segment)
-  print(intersect)
+  cylinder = Cylinder(10,1)
+  line = Line_3D(Point_3D(10,10,10), Vector_3D(1,0.5,1))
+  intersections = cylinder.intersection(line)
+  for intersection in intersections:
+    print(intersection)
