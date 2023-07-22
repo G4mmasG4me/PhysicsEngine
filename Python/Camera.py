@@ -1,7 +1,8 @@
 import math
 
-import numpy as np
 from Colour import *
+import pickle
+
 import pygame
 
 # Custom Function Packages
@@ -12,12 +13,21 @@ from matrix import xyz_matrix, inverse_matrix
 from Points import Point_2D, Point_3D, Vector_2D, Vector_3D
 from Lines import Segment_2D, Segment_3D, Ray_2D, Ray_3D, Line_2D, Line_3D
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 import random
 from tqdm import tqdm
 from light_equations import light_intensity_distance
+from LightingTreeGen import generate_lighting_tree
+from Tree import TreeNode
+from LightTreeColour import calc_colour
 
+from multiprocessing import Pool
+import os
+
+def process_pixel(pixel):
+  px, objects, light_sources, max_light_depth = pixel
+  
 epsilon = 0.1
 class Camera:
   def __init__(self, resolution, FOV, focal_length, position, rotation, render_distance=100):
@@ -106,18 +116,19 @@ class Camera:
     point = point + [self.resolution[0] / 2, -self.resolution[1]/2]
     return point
 
-  def render_objects(self, objects, light_sources):
-    light_traces = 1
-    n = 100
-    
+  def render_objects(self, objects, light_sources, max_light_depth, show=False):
     # convert objects to camera space
     objects = [object.camera_space(self) for object in objects]
 
     # convert light sources to camera space
     light_sources = [light_source.camera_space(self) for light_source in light_sources]
+    
 
-    image = Image.new("RGB", (self.resolution[0], self.resolution[1]))
-    canvas = image.load()
+    image1 = Image.new("RGB", (self.resolution[0], self.resolution[1]))
+    image2 = Image.new("RGB", (self.resolution[0], self.resolution[1]))
+    canvas1 = image1.load()
+    canvas2 = image2.load()
+    lighting_tree_img = [[None for x in range(self.resolution[0])] for y in range(self.resolution[1])]
 
     # simple ray tracing, only one intersection
     pixel_positions = self.calculate_pixel_postions()
@@ -131,125 +142,151 @@ class Camera:
     for pixel in tqdm(pixels):
       pos, pixel_point = pixel
       x_pos, y_pos = pos
-      ray = Ray_3D(Point_3D(0,0,0), Vector_3D(pixel_point[0], pixel_point[1], -self.focal_length))
+      pixel_dir = Vector_3D(pixel_point[0], pixel_point[1], -self.focal_length)
+      main_node = TreeNode({'type':'cam', 'position':Point_3D(0,0,0)})
+      node, colour2 = generate_lighting_tree(main_node, pixel_dir, objects, light_sources, max_light_depth)
+      colour1 = calc_colour(main_node)
+      canvas1[x_pos, y_pos] = tuple(colour1.to_list())
+      canvas2[x_pos, y_pos] = tuple(colour2.to_list())
+      lighting_tree_img[y_pos][x_pos] = main_node
 
-      # generate all the intersections 
-      intersections = []
-      for object in objects: # loop through objects, calculating intersections
-        intersection_output = object.intersection(ray) # pos, colour
-        intersections += intersection_output
-
-      # collected all object intersections
-      if intersections:
-
-        closest_intersection = min(intersections, key=lambda x: x[2])
-
-        obj_intersection, obj_normal, distance, obj_colour, obj_material, obj_refractive_index, intersection_obj = closest_intersection
-        normalised_normal = obj_normal.normalise() # Intersection Normal
-        normals = [normalised_normal, normalised_normal.inverse()]
-        V = obj_intersection.to_vector().inverse().normalise() # Direction From Intersection To Eye
-
-        # split light sources
-        sorted_light_sources = {}
-        for item in light_sources:
-          item_type = type(item).__name__
-          if item_type not in sorted_light_sources:
-            sorted_light_sources[item_type] = []
-          sorted_light_sources[item_type].append(item)
-
-        Ia = Colour((0,0,0))
-        Id = Colour((0,0,0))
-        Is = Colour((0,0,0))
-
-        
-        # ambient light
-        if 'AmbientLight' in sorted_light_sources:
-          for light in sorted_light_sources['AmbientLight']:
-            # calculate ambient light intensity
-            Ia += obj_colour * light.colour * light.intensity
-
-        
-        if 'PointLight' in sorted_light_sources:
-          for light in sorted_light_sources['PointLight']:
-            segment = Segment_3D(obj_intersection, light.position)
-            # check for object interceptions between light and primary ray interception
-            light_intersections = []
-            for object in objects:
-              light_intersections += object.intersection(segment)
-
-            # returns true if any interceptions, else false
-            light_obstructed = any([value is not None for value in light_intersections])
-            if not light_obstructed: # if no obstructions in light
-              distance = light.position.dist(obj_intersection)
-              light_intensity = light_intensity_distance(light.intensity, distance)
-              light_intensity = light.intensity
-              L =  (light.position - obj_intersection).to_vector().normalise() # towards light vector
-              N, NL_dot = max([[N, N.dot(L)] for N in normals], key=lambda x: x[1]) # gets the correct normal for each surface
-              NL_dot = N.dot(L)
-              R = 2 * NL_dot * N - L
-              RV_dot = R.dot(V)
-              Id += obj_colour * light.colour * light_intensity * max(0, NL_dot)
-              Is += obj_colour * light.colour * light_intensity * max(0, RV_dot)**n
-
-        if 'SpotLight' in sorted_light_sources:
-          spotlights = sorted_light_sources['SpotLight']
-          
-          # create a list of spot lights that shine on the primary ray intersection point
-          valid_spotlights = [spotlight for spotlight in spotlights if spotlight.facing_direction(obj_intersection - spotlight.position)]
-
-          for light in valid_spotlights:
-            segment = Segment_3D(obj_intersection, light.position)
-
-            light_intersections = []
-            for object in objects:
-              light_intersections += object.intersection(segment)
-            
-            # returns true if any interceptions, else false
-            light_obstructed = any([value is not None for value in light_intersections])
-            if not light_obstructed: # if no obstructions in light
-              distance = light.position.dist(obj_intersection)
-              light_intensity = light_intensity_distance(light.intensity, distance)
-              L =  (light.position - obj_intersection).to_vector().normalise() # towards light vector
-              N, NL_dot = max([[N, N.dot(L)] for N in normals], key=lambda x: x[1]) # gets the correct normal for each surface
-              R = 2 * NL_dot * N - L
-              RV_dot = R.dot(V)
-              Id += obj_colour * light.colour * light_intensity * max(0, NL_dot)
-              Is += obj_colour * light.colour * light_intensity * max(0, RV_dot)**n
-
-        if 'DirectionalLight' in sorted_light_sources:
-          for light in sorted_light_sources['DirectionalLight']:
-            ray = Ray_3D(obj_intersection, light.direction.inverse())
-            light_intersections = []
-            for object in objects:
-              light_intersections += object.intersection(ray)
-
-
-            light_obstructed = any([value is not None for value in light_intersections])
-            if not light_obstructed:  
-              L = light.direction.inverse() # towards light vector
-              N, NL_dot = max([[N, N.dot(L)] for N in normals], key=lambda x: x[1]) # gets the correct normal for each surface
-              R = 2 * NL_dot * N - L
-              RV_dot = R.dot(V)
-              Id += obj_colour * light.colour * light.intensity * max(0, NL_dot)
-              Is += obj_colour * light.colour * light.intensity * max(0, RV_dot)**n
-
-        colour = Ia + Id + Is
-        # log final colour, as well as light type colours
-      
-      else:
-        colour = Colour((0,0,0))
-    
-      canvas[x_pos, y_pos] = tuple(colour.to_list())
     chars = 'abcdefghijklmnopqrstuvwxyz1234567890'
-    random_file_name = 'imgs/'
+    random_file_name = ''
     for i in range(16):
       random_file_name += random.choice(chars)
-    random_file_name += '.png'
-    image.save(random_file_name)
-    print(f'Saved: {random_file_name}')
+
+    img_name_1 ='imgs/' + random_file_name + '_1.png'
+    img_name_2 ='imgs/' + random_file_name + '_2.png'
+    lighting_file_name = 'light_trees/' + random_file_name + '.pkl'
+
+    image1.save(img_name_1)
+    image2.save(img_name_2)
+    with open(lighting_file_name, 'wb') as file:
+      pickle.dump(lighting_tree_img, file)
+    
+    print(f'Saved Img: {img_name_1}')
+    print(f'Saved Img: {img_name_2}')
+    print(f'Saved Lighting Tree: {lighting_file_name}')
+    return [], image1
+
+  def process_pixel(self, pixel):
+    px, objects, light_sources, max_light_depth = pixel
+    return self.render_pixel(px, objects, light_sources, max_light_depth)
+
+  def render_objects_multiprocessing(self, objects, light_sources, max_light_depth, show=False, randomize_pixels=True):
+    
+    # convert objects to camera space
+    objects = [object.camera_space(self) for object in objects]
+
+    # convert light sources to camera space
+    light_sources = [light_source.camera_space(self) for light_source in light_sources]
+    
+    image = Image.new("RGB", (self.resolution[0], self.resolution[1]))
+    draw = ImageDraw.Draw(image)
+    square_size = 10  # Size of each square in the checkerboard
+    num_squares_x = self.resolution[0] // square_size
+    num_squares_y = self.resolution[1] // square_size
+
+    for i in range(num_squares_x):
+      for j in range(num_squares_y):
+        x = i * square_size
+        y = j * square_size
+        if (i + j) % 2 == 0:
+          color = "grey"
+        else:
+          color = "white"
+          draw.rectangle([x, y, x + square_size, y + square_size], fill=color)
+    canvas = image.load()
+    lighting_tree_img = [[None for x in range(self.resolution[0])] for y in range(self.resolution[1])]
+
+    # simple ray tracing, only one intersection
+    pixel_positions = self.calculate_pixel_postions()
+
+    pixels = []
+    for y_pos, pixel_row in enumerate(pixel_positions):
+      for x_pos, pixel_point in enumerate(pixel_row):
+        pixels.append([[[x_pos, y_pos], pixel_point], objects, light_sources, max_light_depth])
+    if randomize_pixels:
+      random.shuffle(pixels)
+
+    
+    results = []
+
+    if show:
+      os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (100,100)
+      pygame.init()
+      display_sizes = pygame.display.get_desktop_sizes()
+
+      display = 0
+      screen = pygame.display.set_mode((self.resolution[0], self.resolution[1]), display=0)
+      pygame.display.set_caption("Rendering")
+
+      pygame_image = pygame.image.fromstring(image.tobytes(), image.size, image.mode)
+      screen.blit(pygame_image, (0, 0))
+
+    
+    with tqdm(total=len(pixels)) as pbar:
+      pool = Pool(processes=4)
+      for i, result in enumerate(pool.imap(self.process_pixel, pixels)):
+        if show:
+          for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+              pygame.quit()
+            elif event.type == pygame.VIDEORESIZE:
+              # Update the screen dimensions
+              screen_width, screen_height = event.w, event.h
+              screen = pygame.display.set_mode((screen_width, screen_height), pygame.RESIZABLE)
+              self.change_resolution([screen_width, screen_height])
+            elif event.type == pygame.KEYDOWN:
+              if event.key == pygame.K_f:
+                # Toggle fullscreen mode
+                fullscreen = not fullscreen
+                if fullscreen:
+                  pygame.quit()
+                  pygame.init()
+                  screen = pygame.display.set_mode(pygame.display.get_desktop_sizes()[display], pygame.FULLSCREEN, display=0)
+                else:
+                  screen = pygame.display.set_mode((screen_width, screen_height), pygame.RESIZABLE)
+
+        pixel, node, colour = result
+        pos, point = pixel
+        x_pos, y_pos = pos
+
+        canvas[x_pos, y_pos] = colour.to_tuple()
+        lighting_tree_img[y_pos][x_pos] = node
+        if show:
+          screen.set_at((x_pos, y_pos), colour.to_tuple())
+          pygame.display.update()
+        pbar.update()
+
+    pool.close()
+    pool.join()
+
+    chars = 'abcdefghijklmnopqrstuvwxyz1234567890'
+    random_file_name = ''
+    for i in range(16):
+      random_file_name += random.choice(chars)
+
+    img_name ='imgs/' + random_file_name + '.png'
+    lighting_file_name = 'light_trees/' + random_file_name + '.pkl'
+
+    image.save(img_name)
+    with open(lighting_file_name, 'wb') as file:
+      pickle.dump(lighting_tree_img, file)
+    
+    print(f'Saved Img: {img_name}')
+    print(f'Saved Lighting Tree: {lighting_file_name}')
     return [], image
 
 
+  def render_pixel(self, pixel, objects, light_sources, max_light_depth):
+    pos, pixel_point = pixel
+    x_pos, y_pos = pos
+    pixel_dir = Vector_3D(pixel_point[0], pixel_point[1], -self.focal_length)
+    main_node = TreeNode({'type':'cam', 'position':Point_3D(0,0,0)})
+    node, colour = generate_lighting_tree(main_node, pixel_dir, objects, light_sources, max_light_depth)
+    return pixel, node, colour
+  
   def camera_space_point(self, point):
     # translate
     translated_point = point - self.position
