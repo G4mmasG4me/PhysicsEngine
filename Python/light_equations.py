@@ -5,6 +5,12 @@ from Planes import Plane
 import numpy as np
 from intersections import line_plane_intersect, line_polygon_intersection
 
+def incidence_angle(incidence_ray, normal):
+  incidence_direction = incidence_ray.dir.normalise()
+  surface_normal_direction = normal.normalise()
+  incidence_angle = acos(incidence_direction.dot(surface_normal_direction))
+  return incidence_angle
+
 def float_point_rgb(rgb):
   return [value / 255 for value in rgb]
 
