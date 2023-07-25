@@ -1,0 +1,15 @@
+Object Layout
+
+
+| Geometry | geometry paramters | Position    | Rotation    | Scale       | Velocity    | Angular Velocity | Mass | Material | Texture | Collider | Refractive Index |
+| sphere   | radius:5           | X:0 Y:0 Z:0 | X:0 Y:0 Z:0 | X:0 Y:0 Z:0 | X:0 Y:0 Z:0 | X:0 Y:0 Z:0      | 10   | rough    | blue    | sphere   | 1.2              |
+
+
+
+
+
+
+Camera Layout
+
+| Resolution | 
+| Width: 1920 Height: 1080 | 
