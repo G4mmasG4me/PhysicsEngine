@@ -23,14 +23,14 @@ class Material_Map:
 
 
 class Material:
-  def __init__(self, smoothness, shininess, emission, transparency):
-    self.smoothness = smoothness # to do with reflectiveness
+  def __init__(self, roughness, shininess, emission, transparency):
+    self.roughness = roughness # to do with reflectiveness
     self.shininess = shininess # specular reflection coefficient
     self.emission = emission # glow
     self.transparency = transparency
 
 default_material = Material(0.5, 0, 0, 0)
-glass = Material(0.9,0,0,0.9)
-mirror = Material(0.9,0,0,0)
+glass = Material(0.1,0,0,0.9)
+mirror = Material(0.1,0,0,0)
 normal = Material(0.5,0,0,0)
-rough = Material(0.1,0,0,0)
+rough = Material(0.9,0,0,0)
