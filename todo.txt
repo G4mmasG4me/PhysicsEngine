@@ -8,8 +8,13 @@ change positional arguments from geometry based to object based
 
 
 
-
+render in chunks
 
 
 
 -----UV Wrapping-----
+
+
+
+
+
