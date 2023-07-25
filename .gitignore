@@ -6,3 +6,6 @@ Python/tests.py
 imgs/
 light_trees/
 scenes/
+materials/test2.pkl
+.gitignore
+materials/test.pkl
