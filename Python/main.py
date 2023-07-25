@@ -15,8 +15,8 @@ if __name__ == '__main__':
   os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (100,100)
   pygame.init()
 
-  screen_width = 500
-  screen_height = 500
+  screen_width = 250
+  screen_height = 250
   display_sizes = pygame.display.get_desktop_sizes()
   
 
@@ -74,7 +74,7 @@ if __name__ == '__main__':
 
     # render object
     start = time()
-    canvas_px_info, canvas = main_camera.render_objects_multiprocessing(objects, light_sources, 5, True, False)
+    canvas_px_info, canvas = main_camera.render_objects_multiprocessing(objects, light_sources, 5, 'low', 1, True, False, True)
     print(f'Time To Produce Frame: {time() - start}')
     if show_display:  
       pygame_image = pygame.image.fromstring(canvas.tobytes(), canvas.size, canvas.mode)
