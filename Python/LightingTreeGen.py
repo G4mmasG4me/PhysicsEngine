@@ -6,9 +6,11 @@ import pickle
 from Shapes import Infinte_Plane, Quad_Plane_Geometry
 from Colour import Colour
 
+from Lighting import oren_nayar, cook_torrance, phong
+
 air_refractive_index = 1.000293
 
-def generate_lighting_tree(node, direction, objects, light_sources, max_depth, current_depth=0, refraction_stack=[]):
+def generate_lighting_tree(node, direction, objects, light_sources, max_depth, render_method, current_depth=0, refraction_stack=[]):
   primary_ray = Ray_3D(node.value['position'], direction)
   intersections = [] # position, normal, distance, colour, material, refractive index
   
@@ -35,60 +37,85 @@ def generate_lighting_tree(node, direction, objects, light_sources, max_depth, c
     node.add_child(obj_node)
 
     # creates the direction to the view/position of previous node, used for diffuse and specular light. 
-    V = node.value['position'] - obj_intersection
+    V = (node.value['position'] - obj_intersection).to_vector().normalise()
     
-
     ########## refraction / reflection rays ##########
     if current_depth < max_depth:
       
       # generate_reflecion ray
-      if obj_material.smoothness: # must be smooth to generate reflection
+      if obj_material.roughness: # must be smooth to generate reflection
+        n1 = refraction_stack[-1] if refraction_stack else air_refractive_index
+        n2 = obj_refractive_index
         reflected_ray = reflected_ray_dir(primary_ray, obj_normal)
+        # phong lighting method
         L = reflected_ray.normalise() # direction towards light
-        N, NL_dot = max([[N, N.dot(L)] for N in [obj_normal, obj_normal.inverse()]], key=lambda x: x[1])
-        R = 2 * NL_dot * N - L
-        RV_dot = R.dot(V)
+        new_node, colour = generate_lighting_tree(obj_node, reflected_ray, objects, light_sources, max_depth, render_method, current_depth+1, refraction_stack)
+        colour = colour[0] * (1-obj_material.transparency)
+        if render_method.lower() == 'low':
+          
 
-        new_node, colour = generate_lighting_tree(obj_node, reflected_ray, objects, light_sources, max_depth, current_depth+1, refraction_stack)
+        
+          Id_add, Is_add = phong(obj_colour, colour, obj_material.roughness, obj_normal, V, L, obj_material.shininess)
+          Id += Id_add
+          Is += Is_add
 
-        colour = obj_colour * colour * (1-obj_material.transparency)
-        Id += colour * max(0, NL_dot) * (1-obj_material.smoothness)
-        Is += colour * max(0, RV_dot)**obj_material.shininess * obj_material.smoothness
+        # oren nayar and cook torrance lighting method
+        elif render_method.lower() == 'high':
+          Id += oren_nayar(obj_colour, colour, primary_ray, obj_normal, L, V, obj_material.roughness)
+          try:
+            Is += cook_torrance(obj_colour, colour, obj_normal, L, V, obj_material.roughness, n1, n2)
+          except Exception as e:
+            print(f'Error: {e}')
+            print('Reflection')
+            print(f'Object Colour: {obj_colour}')
+            print(f'Light Colour {colour}')
+        else:
+          raise 'Error: Invalid Render Method'
         
 
       # generate refraction ray
       if obj_material.transparency: # must be transparent to refract
         if isinstance(intersection_obj.geometry, (Infinte_Plane, Quad_Plane_Geometry)): # not interior on plane types
-          refractive_index_1 = refraction_stack[-1] if refraction_stack else air_refractive_index
-          refractive_index_2 = obj_refractive_index
+          n1 = refraction_stack[-1] if refraction_stack else air_refractive_index
+          n2 = obj_refractive_index
         else:
           inside_outside = ray_inside_outside_detection(primary_ray, intersection_obj)
           if inside_outside == 'inside': # ray leaving object
-            refractive_index_1 = refraction_stack.pop()
+            n1 = refraction_stack.pop()
             if refraction_stack:
-              refractive_index_2 = refraction_stack[-1]
+              n2 = refraction_stack[-1]
             else:
-              refractive_index_2 = air_refractive_index
+              n2 = air_refractive_index
 
           elif inside_outside == 'outside': # ray entering object
             if refraction_stack:
-              refractive_index_1 = refraction_stack[-1]
+              n1 = refraction_stack[-1]
             else:
-              refractive_index_1 = air_refractive_index
-            refractive_index_2 = obj_refractive_index
+              n1 = air_refractive_index
+            n2 = obj_refractive_index
             refraction_stack.append(obj_refractive_index)
 
-        
-        refracted_ray = refracted_ray_dir(primary_ray, obj_normal, refractive_index_1, refractive_index_2)
+        refracted_ray = refracted_ray_dir(primary_ray, obj_normal, n1, n2)
         L = refracted_ray.normalise() # direction towards light
-        N, NL_dot = max([[N, N.dot(L)] for N in [obj_normal, obj_normal.inverse()]], key=lambda x: x[1])
-        R = 2 * NL_dot * N - L
-        RV_dot = R.dot(V)
-        new_node, colour = generate_lighting_tree(obj_node, refracted_ray, objects, light_sources, max_depth, current_depth+1, refraction_stack)
-        colour = obj_colour * colour * obj_material.transparency
+        new_node, colour = generate_lighting_tree(obj_node, refracted_ray, objects, light_sources, max_depth, render_method, current_depth+1, refraction_stack)
+        colour = colour[0] * obj_material.transparency
+        if render_method.lower() == 'low':
+          Id_add, Is_add = phong(obj_colour, colour, obj_material.roughness, obj_normal, V, L, obj_material.shininess)
+          Id += Id_add
+          Is += Is_add
 
-        Id += colour * max(0, NL_dot) * (1-obj_material.smoothness)
-        Is += colour * max(0, RV_dot)**obj_material.shininess * obj_material.smoothness
+        # oren nayar and cook torrance lighting method
+        elif render_method.lower() == 'high':
+          Id += oren_nayar(obj_colour, colour, primary_ray, obj_normal, L, V, obj_material.roughness)
+          try:
+            Is += cook_torrance(obj_colour, colour, obj_normal, L, V, obj_material.roughness, n1, n2)
+          except Exception as e:
+            print(f'Error: {e}')
+            print('Refraction')
+            print(f'Object Colour: {obj_colour}')
+            print(f'Light Colour {colour}')
+        else:
+          raise 'Error: Invalid Render Method'
 
 
 
@@ -105,7 +132,8 @@ def generate_lighting_tree(node, direction, objects, light_sources, max_depth, c
       Ia += obj_colour * light.colour * light.intensity
       obj_node.add_child(ambient_light_node)
 
-
+    n1 = air_refractive_index
+    n2 = obj_refractive_index
     ##### PointLights #####
     valid_pointlights = sorted_light_sources['PointLight']
     # for planes makes sure the light is shining on the right side of the plane
@@ -125,13 +153,24 @@ def generate_lighting_tree(node, direction, objects, light_sources, max_depth, c
         light_obstructed = any([value is not None for value in light_intersections])
         if not light_obstructed:
           L = (light.position - obj_intersection).to_vector().normalise() # direction towards light
-          N, NL_dot = max([[N, N.dot(L)] for N in [obj_normal, obj_normal.inverse()]], key=lambda x: x[1])
-          R = 2 * NL_dot * N - L
-          RV_dot = R.dot(V)
+          colour = light.colour * light.intensity * (1-obj_material.transparency) # light only affects as reflections not refractions
+          if render_method.lower() == 'low':
+            Id_add, Is_add = phong(obj_colour, colour, obj_material.roughness, obj_normal, V, L, obj_material.shininess)
+            Id += Id_add
+            Is += Is_add
 
-          colour = obj_colour * light.colour * light.intensity * (1-obj_material.transparency) # light only affects as reflections not refractions
-          Id += colour * max(0, NL_dot) * (1-obj_material.smoothness)
-          Is += colour * max(0, RV_dot)**obj_material.shininess * obj_material.smoothness
+          # oren nayar and cook torrance lighting method
+          elif render_method.lower() == 'high':
+            Id += oren_nayar(obj_colour, colour, segment, obj_normal, L, V, obj_material.roughness)
+            try:
+              Is += cook_torrance(obj_colour, colour, obj_normal, L, V, obj_material.roughness, n1, n2)
+            except Exception as e:
+              print(f'Error: {e}')
+              print('Point Light')
+              print(f'Object Colour: {obj_colour}')
+              print(f'Light Colour {colour}')
+          else:
+            raise 'Error: Invalid Render Method'
 
           pointlight_node = TreeNode({'type': 'pointlight', 'position':light.position, 'colour':light.colour, 'intensity':light.intensity, 'final_colour':light.colour*light.intensity})
           obj_node.add_child(pointlight_node)
@@ -157,13 +196,24 @@ def generate_lighting_tree(node, direction, objects, light_sources, max_depth, c
       light_obstructed = any([value is not None for value in light_intersections])
       if not light_obstructed:
         L = (light.position - obj_intersection).to_vector().normalise() # direction towards light
-        N, NL_dot = max([[N, N.dot(L)] for N in [obj_normal, obj_normal.inverse()]], key=lambda x: x[1]) # N = towards plane normal
-        R = 2 * NL_dot * N - L
-        RV_dot = R.dot(V)
+        colour = light.colour * light.intensity * (1-obj_material.transparency) # light only affects as reflections not refractions
+        if render_method.lower() == 'low':
+            Id_add, Is_add = phong(obj_colour, colour, obj_material.roughness, obj_normal, V, L, obj_material.shininess)
+            Id += Id_add
+            Is += Is_add
 
-        colour = obj_colour * light.colour * light.intensity * (1-obj_material.transparency) # light only affects as reflections not refractions
-        Id += colour * max(0, NL_dot) * (1-obj_material.smoothness)
-        Is += colour * max(0, RV_dot)**obj_material.shininess * obj_material.smoothness
+        # oren nayar and cook torrance lighting method
+        elif render_method.lower() == 'high':
+          Id += oren_nayar(obj_colour, colour, segment, obj_normal, L, V, obj_material.roughness)
+          try:
+              Is += cook_torrance(obj_colour, colour, obj_normal, L, V, obj_material.roughness, n1, n2)
+          except Exception as e:
+            print(f'Error: {e}')
+            print('Spotlight')
+            print(f'Object Colour: {obj_colour}')
+            print(f'Light Colour {colour}')
+        else:
+          raise 'Error: Invalid Render Method'
 
         spotlight_node = TreeNode({'type':'spotlight', 'position':light.position, 'colour':light.colour, 'intensity':light.intensity, 'final_colour':light.colour*light.intensity})
         obj_node.add_child(spotlight_node)
@@ -188,17 +238,24 @@ def generate_lighting_tree(node, direction, objects, light_sources, max_depth, c
       light_obstructed = any([value is not None for value in light_intersections])
       if not light_obstructed:
         L = light.direction.inverse()
-        N, NL_dot = max([[N, N.dot(L)] for N in [obj_normal, obj_normal.inverse()]], key=lambda x: x[1])
-        NL_dot = max(0, NL_dot)
-        R = 2 * NL_dot * N - L
-        RV_dot = R.dot(V)
-        RV_dot = max(0, RV_dot)
+        colour = light.colour * light.intensity * (1-obj_material.transparency)
+        if render_method.lower() == 'low':
+            Id_add, Is_add = phong(obj_colour, colour, obj_material.roughness, obj_normal, V, L, obj_material.shininess)
+            Id += Id_add
+            Is += Is_add
 
-        
-        colour = obj_colour * light.colour * light.intensity * (1-obj_material.transparency)
-        Id += colour * NL_dot * (1-obj_material.smoothness)
-        
-        Is += colour * RV_dot**obj_material.shininess * obj_material.smoothness
+          # oren nayar and cook torrance lighting method
+        elif render_method.lower() == 'high':
+          Id += oren_nayar(obj_colour, colour, ray, obj_normal, L, V, obj_material.roughness)
+          try:
+              Is += cook_torrance(obj_colour, colour, obj_normal, L, V, obj_material.roughness, n1, n2)
+          except Exception as e:
+            print(f'Error: {e}')
+            print('Directional Light')
+            print(f'Object Colour: {obj_colour}')
+            print(f'Light Colour {colour}')
+        else:
+          raise 'Error: Invalid Render Method'
 
         directionallight_node = TreeNode({'type':'directionallight', 'direction':light.direction, 'colour':light.colour, 'intensity':light.intensity, 'final_colour':light.colour*light.intensity})
         obj_node.add_child(directionallight_node)
@@ -235,6 +292,9 @@ def generate_lighting_tree(node, direction, objects, light_sources, max_depth, c
             node.add_child(reflection_tree_node) """
   
   final_colour = Ia + Id + Is
+  node.value['Ia'] = Ia
+  node.value['Id'] = Id
+  node.value['Is'] = Is
   node.value['final_colour'] = final_colour
   
-  return node, final_colour
+  return node, (final_colour, Ia, Id, Is)
