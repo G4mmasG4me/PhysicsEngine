@@ -38,9 +38,21 @@ if __name__ == '__main__':
     Object(Quad_Plane_Geometry((40,40)), Point_3D(40,0,-60), Rotation_3D(Rotation(0, unit='deg'),Rotation(90, unit='deg'),Rotation(0, unit='deg')), [1,1,1], 0, 0, 0, mirror, WHITE, None, 1),
   ]
 
+  objects = [
+    Object(Infinte_Plane(), Point_3D(0,-20,0), Rotation_3D(Rotation(90, unit='deg'),Rotation(0, unit='deg'),Rotation(0, unit='deg')), [1,1,1], 0, 0, 0, Material(0.1,1,0,0), chessboard_3, None, 1),
+    Object(Sphere(10), Point_3D(-50,10,-75), Rotation_3D(Rotation(0, unit='deg'),Rotation(0, unit='deg'),Rotation(0, unit='deg')), [1,1,1], 0, 0, 0, Material(0.2,10,0,0), BLUE, None, 1),
+    Object(Sphere(10), Point_3D(-25,10,-75), Rotation_3D(Rotation(0, unit='deg'),Rotation(0, unit='deg'),Rotation(0, unit='deg')), [1,1,1], 0, 0, 0, Material(0.4,10,0,0), BLUE, None, 1),
+    Object(Sphere(10), Point_3D(0,10,-75), Rotation_3D(Rotation(0, unit='deg'),Rotation(0, unit='deg'),Rotation(0, unit='deg')), [1,1,1], 0, 0, 0, Material(0.6,10,0,0), BLUE, None, 1),
+    Object(Sphere(10), Point_3D(25,10,-75), Rotation_3D(Rotation(0, unit='deg'),Rotation(0, unit='deg'),Rotation(0, unit='deg')), [1,1,1], 0, 0, 0, Material(0.8,10,0,0), BLUE, None, 1),
+    Object(Sphere(10), Point_3D(50,10,-75), Rotation_3D(Rotation(0, unit='deg'),Rotation(0, unit='deg'),Rotation(0, unit='deg')), [1,1,1], 0, 0, 0, Material(1,10,0,0), BLUE, None, 1),
+  ]
+  objects = [
+    Object(Sphere(10), Point_3D(0,0,-25), Rotation_3D(Rotation(0, unit='deg'),Rotation(0, unit='deg'),Rotation(0, unit='deg')), [1,1,1], 0, 0, 0, Material(0.1,1,0,0), BLUE, None, 1),
+  ]
+
   light_sources = [
     AmbientLight(WHITE, 0.2),
-    DirectionalLight(Vector_3D(-1,-1,-1), WHITE, 0.5)
+    DirectionalLight(Vector_3D(-1,0,-1), WHITE, 0.5)
   ]
 
   name = input('Whats the Scene Name:')
