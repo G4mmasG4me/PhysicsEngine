@@ -116,64 +116,11 @@ class Camera:
     point = point + [self.resolution[0] / 2, -self.resolution[1]/2]
     return point
 
-  def render_objects(self, objects, light_sources, max_light_depth, show=False):
-    # convert objects to camera space
-    objects = [object.camera_space(self) for object in objects]
-
-    # convert light sources to camera space
-    light_sources = [light_source.camera_space(self) for light_source in light_sources]
-    
-
-    image1 = Image.new("RGB", (self.resolution[0], self.resolution[1]))
-    image2 = Image.new("RGB", (self.resolution[0], self.resolution[1]))
-    canvas1 = image1.load()
-    canvas2 = image2.load()
-    lighting_tree_img = [[None for x in range(self.resolution[0])] for y in range(self.resolution[1])]
-
-    # simple ray tracing, only one intersection
-    pixel_positions = self.calculate_pixel_postions()
-
-    # convert pixel positions to a flattened list that consists of [[x_pos, y_pos], pixel_point]
-    pixels = []
-    for y_pos, pixel_row in enumerate(pixel_positions):
-      for x_pos, pixel_point in enumerate(pixel_row):
-        pixels.append([[x_pos, y_pos], pixel_point])
-    
-    for pixel in tqdm(pixels):
-      pos, pixel_point = pixel
-      x_pos, y_pos = pos
-      pixel_dir = Vector_3D(pixel_point[0], pixel_point[1], -self.focal_length)
-      main_node = TreeNode({'type':'cam', 'position':Point_3D(0,0,0)})
-      node, colour2 = generate_lighting_tree(main_node, pixel_dir, objects, light_sources, max_light_depth)
-      colour1 = calc_colour(main_node)
-      canvas1[x_pos, y_pos] = tuple(colour1.to_list())
-      canvas2[x_pos, y_pos] = tuple(colour2.to_list())
-      lighting_tree_img[y_pos][x_pos] = main_node
-
-    chars = 'abcdefghijklmnopqrstuvwxyz1234567890'
-    random_file_name = ''
-    for i in range(16):
-      random_file_name += random.choice(chars)
-
-    img_name_1 ='imgs/' + random_file_name + '_1.png'
-    img_name_2 ='imgs/' + random_file_name + '_2.png'
-    lighting_file_name = 'light_trees/' + random_file_name + '.pkl'
-
-    image1.save(img_name_1)
-    image2.save(img_name_2)
-    with open(lighting_file_name, 'wb') as file:
-      pickle.dump(lighting_tree_img, file)
-    
-    print(f'Saved Img: {img_name_1}')
-    print(f'Saved Img: {img_name_2}')
-    print(f'Saved Lighting Tree: {lighting_file_name}')
-    return [], image1
-
   def process_pixel(self, pixel):
-    px, objects, light_sources, max_light_depth = pixel
-    return self.render_pixel(px, objects, light_sources, max_light_depth)
+    px, objects, light_sources, max_light_depth, render_method, split_light = pixel
+    return self.render_pixel(px, objects, light_sources, max_light_depth, render_method, split_light)
 
-  def render_objects_multiprocessing(self, objects, light_sources, max_light_depth, show=False, randomize_pixels=True):
+  def render_objects_multiprocessing(self, objects, light_sources, max_light_depth, render_method, processes, show=False, randomize_pixels=True, split_light=False):
     
     # convert objects to camera space
     objects = [object.camera_space(self) for object in objects]
@@ -182,21 +129,36 @@ class Camera:
     light_sources = [light_source.camera_space(self) for light_source in light_sources]
     
     image = Image.new("RGB", (self.resolution[0], self.resolution[1]))
-    draw = ImageDraw.Draw(image)
-    square_size = 10  # Size of each square in the checkerboard
-    num_squares_x = self.resolution[0] // square_size
-    num_squares_y = self.resolution[1] // square_size
+    
 
-    for i in range(num_squares_x):
-      for j in range(num_squares_y):
-        x = i * square_size
-        y = j * square_size
-        if (i + j) % 2 == 0:
-          color = "grey"
-        else:
-          color = "white"
-          draw.rectangle([x, y, x + square_size, y + square_size], fill=color)
+    square_size = 10  # Size of each square in the checkerboard
     canvas = image.load()
+    if split_light:
+      Ia_image = image.copy()
+      Id_image = image.copy()
+      Is_image = image.copy()
+      Ia_canvas = Ia_image.load()
+      Id_canvas = Id_image.load()
+      Is_canvas = Is_image.load()
+
+    for i in range(self.resolution[1]):
+      # for every 100 pixels out of the total 500 
+      # if its the first 50 pixels
+      if (i % (square_size*2)) >= square_size:
+        for j in range(self.resolution[0]):
+          if (j % (square_size*2)) < square_size:
+            canvas[i,j] = (0,0,0)
+          else:
+            canvas[i,j] = (50,50,50)
+
+      # else its the second 50 pixels         
+      else:
+        for j in range(self.resolution[0]):
+          if (j % (square_size*2)) >= square_size:
+            canvas[i,j] = (0,0,0)
+          else:
+            canvas[i,j] = (50,50,50)
+    
     lighting_tree_img = [[None for x in range(self.resolution[0])] for y in range(self.resolution[1])]
 
     # simple ray tracing, only one intersection
@@ -205,7 +167,7 @@ class Camera:
     pixels = []
     for y_pos, pixel_row in enumerate(pixel_positions):
       for x_pos, pixel_point in enumerate(pixel_row):
-        pixels.append([[[x_pos, y_pos], pixel_point], objects, light_sources, max_light_depth])
+        pixels.append([[[x_pos, y_pos], pixel_point], objects, light_sources, max_light_depth, render_method, split_light])
     if randomize_pixels:
       random.shuffle(pixels)
 
@@ -226,7 +188,7 @@ class Camera:
 
     
     with tqdm(total=len(pixels)) as pbar:
-      pool = Pool(processes=4)
+      pool = Pool(processes=processes)
       for i, result in enumerate(pool.imap(self.process_pixel, pixels)):
         if show:
           for event in pygame.event.get():
@@ -252,10 +214,14 @@ class Camera:
         pos, point = pixel
         x_pos, y_pos = pos
 
-        canvas[x_pos, y_pos] = colour.to_tuple()
+        canvas[x_pos, y_pos] = colour[0].to_tuple()
+        if split_light:
+          Ia_canvas[x_pos, y_pos] = colour[1].to_tuple()
+          Id_canvas[x_pos, y_pos] = colour[2].to_tuple()
+          Is_canvas[x_pos, y_pos] = colour[3].to_tuple()
         lighting_tree_img[y_pos][x_pos] = node
         if show:
-          screen.set_at((x_pos, y_pos), colour.to_tuple())
+          screen.set_at((x_pos, y_pos), colour[0].to_tuple())
           pygame.display.update()
         pbar.update()
 
@@ -271,6 +237,11 @@ class Camera:
     lighting_file_name = 'light_trees/' + random_file_name + '.pkl'
 
     image.save(img_name)
+    if split_light:
+      Ia_image.save('imgs/' + random_file_name + '_Ia.png')
+      Id_image.save('imgs/' + random_file_name + '_Id.png')
+      Is_image.save('imgs/' + random_file_name + '_Is.png')
+    
     with open(lighting_file_name, 'wb') as file:
       pickle.dump(lighting_tree_img, file)
     
@@ -279,12 +250,12 @@ class Camera:
     return [], image
 
 
-  def render_pixel(self, pixel, objects, light_sources, max_light_depth):
+  def render_pixel(self, pixel, objects, light_sources, max_light_depth, render_method, split_light):
     pos, pixel_point = pixel
     x_pos, y_pos = pos
     pixel_dir = Vector_3D(pixel_point[0], pixel_point[1], -self.focal_length)
     main_node = TreeNode({'type':'cam', 'position':Point_3D(0,0,0)})
-    node, colour = generate_lighting_tree(main_node, pixel_dir, objects, light_sources, max_light_depth)
+    node, colour = generate_lighting_tree(main_node, pixel_dir, objects, light_sources, max_light_depth, render_method, split_light)
     return pixel, node, colour
   
   def camera_space_point(self, point):
