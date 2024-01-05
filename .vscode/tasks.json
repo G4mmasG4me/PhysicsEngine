@@ -1,25 +1,40 @@
 {
 	"version": "2.0.0",
 	"tasks": [
-    {
-      "type": "cppbuild",
-      "label": "C/C++: g++.exe build active file",
-      "command": "D:\\Applications\\MYSYS2_64\\mingw64\\bin\\g++.exe",
-      "args": [
-        "-fdiagnostics-color=always",
-        "-g",
-        "${file}",
-        "-o",
-        "${fileDirname}\\${fileBasenameNoExtension}.exe"
-      ],
-      "options": {
-        "cwd": "${fileDirname}"
-      },
-      "problemMatcher": [
-        "$gcc"
-      ],
-      "group": "build",
-      "detail": "compiler: D:\\Applications\\MYSYS2_64\\mingw64\\bin\\g++.exe"
-    }
-  ]
+			{
+					"type": "shell",
+					"label": "C++ Compile",
+					"command": "C:\\msys64\\mingw64\\bin\\g++.exe",
+					"args": [
+						"-fdiagnostics-color=always",
+						"-g",
+						"${file}",
+						"${fileDirname}\\window_node.cpp",
+						"-o",
+						"${fileDirname}\\${fileBasenameNoExtension}.exe",
+						"-L",
+						"C:/Program Files (x86)/Windows Kits/10/Lib/10.0.22621.0/um/x64/",
+						"-luser32",
+						"-lcomdlg32",
+						"-lgdi32"
+					],
+					"options": {
+							"cwd": "${workspaceFolder}"
+					},
+					"problemMatcher": [
+							"$gcc"
+					],
+			},
+			{
+					"type": "shell",
+					"label": "C++ run",
+					"command": "${fileDirname}\\${fileBasenameNoExtension}.exe",
+				"dependsOn":["C++ Compile"],
+			 "dependsOrder": "sequence",
+					"group": {
+												"kind": "build",
+												 "isDefault": true
+									 }
+			 }
+	]
 }

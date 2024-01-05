@@ -1,9 +1,9 @@
-add docstring
-
-change positional arguments from geometry based to object based
-
-
-
+-add docstring
+-start to chunk image
+-custom method supports different shapes that just use different faces, so don't have to repeat the same classes
+-error checking for critical angle
+-integrate BxDF Functions, to render more accurate light
+-integrate better lighting methods
 
 
 

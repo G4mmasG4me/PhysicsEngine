@@ -13,3 +13,27 @@ loop through light sources
   loop through objects
     calculate intersection point
     
+-----5 Different Uses of The Engine----- 
+---Scene Creator---
+Renders in wireframes or rasterization
+Allows you to create and edit scenes
+
+---Scene Renderer---
+Renders in ray tracing or ray pathing
+Renders a static scene
+
+---Game Runner---
+Renders in rasterization or optimized ray tracing / ray pathing
+Allows you to run a scene in real time
+Need to be able to apply code to an object
+
+---Physics Simulator---
+Simulates physics using models
+Saves each step, which can then be animated
+
+---Ray Follower---
+Renders in rasterization
+Allows you to select a scene, and then show and follow the ray for each pixel in the canvas
+
+---Main Logic---
+I need to main things, a scene creator, a scene renderer

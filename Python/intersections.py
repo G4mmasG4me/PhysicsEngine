@@ -1,7 +1,7 @@
 import math
-from Points import Point_2D, Point_3D, Vector_2D, Vector_3D
-from Lines import Segment_2D, Segment_3D, Ray_2D, Ray_3D, Line_2D, Line_3D
-from Planes import Plane
+from geometry import Point_2D, Point_3D, Vector_2D, Vector_3D
+from geometry import Segment_2D, Segment_3D, Ray_2D, Ray_3D, Line_2D, Line_3D
+from geometry import Plane
 
 import numpy as np
 from maths import rotate_plane_points

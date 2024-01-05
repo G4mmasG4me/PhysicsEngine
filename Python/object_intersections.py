@@ -1,5 +1,5 @@
 import math
-from Points import Point_3D
+from geometry import Point_3D
 
 def line_sphere_intersection(line, sphere):
   oc = line.p1

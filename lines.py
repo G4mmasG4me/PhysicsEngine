@@ -3,10 +3,9 @@ import os
 allowed_extensions = ['py', 'cpp']
 extension_lines = {value: 0 for value in allowed_extensions}
 
-rootdir = 'C:/Users/domho/Desktop/Projects/PhysicsEngine/'
 total_lines = 0
 total_chars = 0
-for subdir, dirs, files in os.walk(rootdir):
+for subdir, dirs, files in os.walk(os.getcwd()):
   for file in files:
     file_extension = file.split('.')[-1]
     if file_extension in allowed_extensions:
